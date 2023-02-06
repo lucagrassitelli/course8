@@ -17,7 +17,7 @@ Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible t
 In this project, we will use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to predict the manner in which they did the exercise.  
 
 ## Data Preprocessing  
-```{r, echo = F}
+```{r, echo = T, results = 'hide', warning=FALSE, message=FALSE}
 library(caret)
 library(rpart)
 library(rpart.plot)
@@ -29,7 +29,7 @@ library(pgmm)
 library(dplyr)
 ```
 ### Download the Data
-```{r, echo = F}
+```{r, echo = T, results = 'hide'}
 trainUrl <-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 testUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
 trainFile <- "pml-training.csv"
@@ -65,14 +65,13 @@ trainAll <- createDataPartition(y=train$classe, p=0.8, list=FALSE)
 TrainTrain <- train[trainAll, ] 
 TestTrain <- train[-trainAll, ]
 
-str(train)
-plot(TestTrain$classe)
+plot(TestTrain$classe, xlab = "classe")
 ```
 
 ## Data Modeling
 
 I apply 4 different models, i.e. a decision tree (rpart), a gradient boosting method (gbm), a linear discriminant analysis (lda), and a random forest (rf). In the latter, I limit the number of new trees to 53 to speed up significantly the process. 
-```{r, echo = F}
+```{r, echo = T}
 
 model1 <- train(classe ~ ., data=TrainTrain, method = "rpart")
 model2 <- train(classe ~ ., data=TrainTrain, method="gbm",verbose = F)
