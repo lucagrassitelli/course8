@@ -1,0 +1,13 @@
+ggplot2
+lattice
+caret
+rpart
+rpart.plot
+randomForest
+corrplot
+gbm
+tibble
+bitops
+rattle
+pgmm
+dplyr

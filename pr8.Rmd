@@ -1,0 +1,127 @@
+---
+title: "pr8"
+output: html_document
+date: "2023-02-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Introduction  
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.  
+
+In this project, we will use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to predict the manner in which they did the exercise.  
+
+## Data Preprocessing  
+```{r, echo = F}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(corrplot)
+library(gbm)
+library(rattle)
+library(pgmm)
+library(dplyr)
+```
+### Download the Data
+```{r, echo = F}
+trainUrl <-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+trainFile <- "pml-training.csv"
+testFile  <- "pml-testing.csv"
+
+download.file(trainUrl, destfile=trainFile, method="curl")
+download.file(testUrl, destfile=testFile, method="curl")
+```  
+### Read the Data
+After downloading the data from the data source, we can read the two csv files into two data frames.  
+```{r, cache = T}
+train <- read.csv("pml-training.csv",na.strings=c("NA","")) %>%   select(-c(1:7))
+test <- read.csv("pml-testing.csv",na.strings=c("NA","")) %>%   select(-c(1:7))
+```
+The first 7 columns are excluded as well as the NA are excluded, else they will cause problems or spurious correlations (especially X).
+
+### Clean the data
+In this step, we will clean the data and get rid of observations with missing values as well as some meaningless variables.
+
+```{r, cache = T}
+train <- train[,colSums(is.na(train)) == 0]
+test <- test[,colSums(is.na(test)) == 0]
+
+train$classe <- as.factor(train$classe) 
+
+```  
+
+### Slice the data
+Then, we can split the cleaned training set into a pure training data set (80%) and a validation data set (20%).
+```{r, cache = T}
+set.seed(42) # For reproducibile purpose
+trainAll <- createDataPartition(y=train$classe, p=0.8, list=FALSE)
+TrainTrain <- train[trainAll, ] 
+TestTrain <- train[-trainAll, ]
+
+str(train)
+plot(TestTrain$classe)
+```
+
+## Data Modeling
+
+I apply 4 different models, i.e. a decision tree (rpart), a gradient boosting method (gbm), a linear discriminant analysis (lda), and a random forest (rf). In the latter, I limit the number of new trees to 53 to speed up significantly the process. 
+```{r, echo = F}
+
+model1 <- train(classe ~ ., data=TrainTrain, method = "rpart")
+model2 <- train(classe ~ ., data=TrainTrain, method="gbm",verbose = F)
+model3 <- train(classe ~ ., data=TrainTrain, method="lda")
+model4 <- train(classe ~ ., data=TrainTrain, method="rf", metric='Accuracy', ntree = 53)
+```
+
+## Predicting for Test Data Set
+
+I can then check the predictions with the 20% test set. 
+```{r, cache = T}
+prediction1 <- predict(model1, TestTrain)
+prediction2 <- predict(model2, TestTrain)
+prediction3 <- predict(model3, TestTrain)
+prediction4 <- predict(model4, TestTrain)
+```  
+and build a dataframe to compare the accuracies of the 4 methods, and their relative error.
+```{r}
+model_list <- list(model1, model2, model3, model4)
+prediction_list <- list(prediction1, prediction2, prediction3, prediction4)
+
+methods = c()
+pred = c()
+for (i in 1:4){
+  methods <- rbind(methods,model_list[[i]]["method"])
+  CM = confusionMatrix(prediction_list[[i]], TestTrain$classe)
+  pred <- rbind(pred,CM$overall[1])
+}
+df = data.frame(methods = methods,predictions = pred)
+df$error = 1 - df$Accuracy
+df
+```
+
+## TEST validation
+
+The highest accuracies are for model 2 and 4 (gbm and rf), especially random forest. With them, we can predict the values for the test set:
+
+```{r}
+p2 = predict(model2, test)
+p4 = predict(model4, test)
+setequal(p2,p4)
+p2
+p4
+```
+which both return the same values.
+
+## Appendix
+
+Decision Tree Visualization
+```{r, cache = T}
+fancyRpartPlot(model1$finalModel)
+```
